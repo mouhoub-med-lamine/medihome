@@ -18,7 +18,6 @@ import { MOCK_REQUESTS } from '@/lib/mock-data'
 import { updateVisitStatus, submitConsultation } from '@/lib/actions/doctor.actions'
 import { toast } from 'react-hot-toast'
 import Chat from '@/components/common/Chat'
-import { MOCK_REQUESTS } from '@/lib/mock-data'
 
 export default function ActiveVisitPage() {
     const { requestId } = useParams()
