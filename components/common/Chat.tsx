@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Send, User, MessageSquare, X, Paperclip } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { createClient } from '@/lib/supabase/client'
 
 interface Message {
     id: string
@@ -19,35 +18,14 @@ export default function Chat({ requestId, currentUserId }: { requestId: string, 
     const [input, setInput] = useState('')
     const [isOpen, setIsOpen] = useState(false)
     const scrollRef = useRef<HTMLDivElement>(null)
-    const supabase = createClient()
 
     useEffect(() => {
-        // Fetch initial messages
-        const fetchMessages = async () => {
-            const { data } = await supabase
-                .from('messages')
-                .select('*')
-                .eq('request_id', requestId)
-                .order('created_at', { ascending: true })
-            setMessages(data || [])
-        }
-        fetchMessages()
-
-        // Subscribe to new messages
-        const channel = supabase
-            .channel(`chat-${requestId}`)
-            .on('postgres_changes', {
-                event: 'INSERT',
-                schema: 'public',
-                table: 'messages',
-                filter: `request_id=eq.${requestId}`
-            }, (payload) => {
-                setMessages(prev => [...prev, payload.new as Message])
-            })
-            .subscribe()
-
-        return () => { supabase.removeChannel(channel) }
-    }, [requestId, supabase])
+        // Mock initial messages
+        setMessages([
+            { id: '1', content: 'Bonjour Dr., j\'ai une forte fièvre.', sender_id: 'patient-1', created_at: new Date().toISOString() },
+            { id: '2', content: 'Je suis en route, environ 10 minutes.', sender_id: 'doctor-1', created_at: new Date().toISOString() }
+        ])
+    }, [])
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -59,15 +37,15 @@ export default function Chat({ requestId, currentUserId }: { requestId: string, 
         e.preventDefault()
         if (!input.trim()) return
 
-        const { error } = await supabase
-            .from('messages')
-            .insert([{
-                request_id: requestId,
-                sender_id: currentUserId,
-                content: input
-            }])
+        const newMessage: Message = {
+            id: Math.random().toString(),
+            content: input,
+            sender_id: currentUserId,
+            created_at: new Date().toISOString()
+        }
 
-        if (!error) setInput('')
+        setMessages(prev => [...prev, newMessage])
+        setInput('')
     }
 
     return (

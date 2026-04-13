@@ -18,7 +18,6 @@ import { createRequest } from '@/lib/actions/request.actions'
 import { toast } from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
 
-import { createClient } from '@/lib/supabase/client'
 
 const steps = ['Spécialiste', 'Symptômes', 'Quand?', 'Où?', 'Contact', 'Récapitulatif']
 
@@ -50,10 +49,9 @@ export default function RequestWizard() {
     })
 
     useEffect(() => {
-        const supabase = createClient()
-        supabase.auth.getUser().then(({ data: { user } }) => {
-            setUser(user)
-        })
+        // Mock detective for user session per role cookie or similar
+        // For the wizard, we'll just assume a guest for simplicity in demo
+        setUser(null)
     }, [])
 
     const nextStep = () => {
@@ -79,16 +77,17 @@ export default function RequestWizard() {
         }
         setLoading(true)
         const result = await createRequest(formData)
-        if (result.error) {
-            toast.error(result.error)
+        if (result && 'error' in result && result.error) {
+            toast.error(result.error as string)
             setLoading(false)
         } else {
+            const data = (result as any).data
             toast.success("Demande créée avec succès!")
             // If guest, maybe show a special tracking page or redirect to login
             if (user) {
-                router.push(`/patient/tracking/${result.data.id}`)
+                router.push(`/patient/tracking/${data.id}`)
             } else {
-                router.push(`/tracking/${result.data.id}`)
+                router.push(`/tracking/${data.id}`)
             }
         }
     }

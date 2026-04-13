@@ -8,6 +8,8 @@ export async function createRequest(formData: any) {
     revalidatePath('/doctor/requests')
 
     return {
+        success: true,
+        error: null as string | null,
         data: {
             id: 'req-new-' + Math.random().toString(36).substr(2, 9),
             status: 'pending',
