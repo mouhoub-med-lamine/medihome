@@ -1,64 +1,67 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
+import { cookies } from 'next/headers'
+import { MOCK_PROFILES } from '@/lib/mock-data'
 
 export async function login(formData: FormData) {
-    const supabase = createClient()
-
     const email = formData.get('email') as string
     const password = formData.get('password') as string
 
-    const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-    })
+    // Find user in mock data
+    const user = MOCK_PROFILES.find(u => u.email === email)
 
-    if (error) {
-        return { error: error.message }
+    if (!user || password !== 'password') {
+        return { error: 'Email ou mot de passe incorrect (utilisez "password")' }
     }
 
+    const cookieStore = await cookies()
+    cookieStore.set('demo-user-id', user.id, { path: '/' })
+    cookieStore.set('demo-user-role', user.role, { path: '/' })
+    cookieStore.set('demo-user-name', user.full_name, { path: '/' })
+
     revalidatePath('/', 'layout')
-    redirect('/dashboard')
+
+    if (user.role === 'doctor') redirect('/doctor/dashboard')
+    if (user.role === 'admin') redirect('/admin/dashboard')
+    redirect('/patient/dashboard')
 }
 
 export async function signup(formData: FormData, role: 'patient' | 'doctor') {
-    const supabase = createClient()
+    try {
+        const full_name = formData.get('full_name') as string
+        const email = formData.get('email') as string
 
-    const email = formData.get('email') as string
-    const password = formData.get('password') as string
-    const full_name = formData.get('full_name') as string
-    const phone = formData.get('phone') as string
+        // Basic validation
+        if (!email || !full_name) {
+            return { error: 'Veuillez remplir tous les champs obligatoires' }
+        }
 
-    const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-            data: {
-                role,
-                full_name,
-                phone,
-            },
-        },
-    })
+        // Mock signup success
+        const cookieStore = await cookies()
+        cookieStore.set('demo-user-role', role, { path: '/' })
+        cookieStore.set('demo-user-name', full_name, { path: '/' })
 
-    if (error) {
-        return { error: error.message }
-    }
+        revalidatePath('/', 'layout')
 
-    revalidatePath('/', 'layout')
-
-    if (role === 'patient') {
-        redirect('/register/patient?step=2')
-    } else {
-        redirect('/register/doctor?step=2')
+        if (role === 'patient') {
+            redirect('/register/patient?step=2')
+        } else {
+            redirect('/register/doctor?step=2')
+        }
+    } catch (err: any) {
+        if (err.message === 'NEXT_REDIRECT') throw err
+        return { error: "Une erreur inattendue s'est produite." }
     }
 }
 
 export async function logout() {
-    const supabase = createClient()
-    await supabase.auth.signOut()
+    const cookieStore = await cookies()
+    cookieStore.delete('demo-user-id')
+    cookieStore.delete('demo-user-role')
+    cookieStore.delete('demo-user-name')
+
     revalidatePath('/', 'layout')
     redirect('/login')
 }

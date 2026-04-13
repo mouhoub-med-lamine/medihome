@@ -1,46 +1,43 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { updateSession } from '@/lib/supabase/middleware'
-
 export async function middleware(request: NextRequest) {
-    const { supabaseResponse, user } = await updateSession(request)
+    const cookieStore = request.cookies
+    const userId = cookieStore.get('demo-user-id')?.value
+    const role = cookieStore.get('demo-user-role')?.value
 
     const url = new URL(request.url)
     const path = url.pathname
 
     // Public paths that don't need auth
-    const isPublicPath = path === '/' || path.startsWith('/(auth)') || path === '/login' || path.startsWith('/register')
+    const isPublicPath = path === '/' ||
+        path === '/login' ||
+        path.startsWith('/register') ||
+        path === '/patient/request'
 
-    if (!user && (path.startsWith('/dashboard') || path.startsWith('/(patient)') || path.startsWith('/(doctor)') || path.startsWith('/(admin)'))) {
+    if (!userId && (path.startsWith('/dashboard') ||
+        (path.startsWith('/patient') && path !== '/patient/request') ||
+        path.startsWith('/doctor') ||
+        path.startsWith('/admin'))) {
         return NextResponse.redirect(new URL('/login', request.url))
     }
 
-    if (user) {
-        // Check role and redirect accordingly
-        const { data: profile } = await (await import('@/lib/supabase/server')).createClient()
-            .from('profiles')
-            .select('role')
-            .eq('id', user.id)
-            .single()
-
-        const role = profile?.role
-
+    if (userId) {
         // Redirect authenticated users away from auth pages
         if (isPublicPath && path !== '/') {
-            if (role === 'patient') return NextResponse.redirect(new URL('/dashboard', request.url))
+            if (role === 'patient') return NextResponse.redirect(new URL('/patient/dashboard', request.url))
             if (role === 'doctor') return NextResponse.redirect(new URL('/doctor/dashboard', request.url))
             if (role === 'admin') return NextResponse.redirect(new URL('/admin/dashboard', request.url))
         }
 
         // Role-based protection
         if (path.startsWith('/doctor') && role !== 'doctor') {
-            return NextResponse.redirect(new URL('/dashboard', request.url))
+            return NextResponse.redirect(new URL('/patient/dashboard', request.url))
         }
         if (path.startsWith('/admin') && role !== 'admin') {
-            return NextResponse.redirect(new URL('/dashboard', request.url))
+            return NextResponse.redirect(new URL('/patient/dashboard', request.url))
         }
     }
 
-    return supabaseResponse
+    return NextResponse.next()
 }
 
 export const config = {

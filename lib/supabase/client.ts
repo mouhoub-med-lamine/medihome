@@ -1,8 +1,29 @@
-import { createBrowserClient } from '@supabase/ssr'
+import { MOCK_REQUESTS, MOCK_PROFILES } from '../mock-data'
 
 export function createClient() {
-    return createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-    )
+    return {
+        auth: {
+            getUser: async () => ({ data: { user: { id: 'demo-user-id' } }, error: null }),
+            onAuthStateChange: (cb: any) => {
+                return { data: { subscription: { unsubscribe: () => { } } } }
+            }
+        },
+        from: (table: string) => ({
+            select: () => ({
+                eq: () => ({
+                    single: async () => ({ data: table === 'profiles' ? MOCK_PROFILES[1] : MOCK_REQUESTS[0], error: null }),
+                    order: () => ({ data: table === 'consultation_requests' ? MOCK_REQUESTS : [], error: null })
+                }),
+                order: () => ({ data: table === 'consultation_requests' ? MOCK_REQUESTS : [], error: null }),
+            }),
+            channel: () => ({
+                on: () => ({
+                    on: () => ({
+                        subscribe: () => { }
+                    })
+                })
+            })
+        }),
+        removeChannel: () => { }
+    } as any
 }
